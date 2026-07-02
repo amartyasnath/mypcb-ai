@@ -1,0 +1,8 @@
+{
+  "name": "myPCB AI",
+  "description": "AI-powered electronic component recommendation engine specializing in project-specific part sourcing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

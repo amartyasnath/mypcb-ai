@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A registered user of the application",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": ["string", "number"] }
+      },
+      "required": ["email", "name", "createdAt"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "A chat log of a component scour",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "messages": { "type": "array" },
+        "createdAt": { "type": ["string", "number"] },
+        "updatedAt": { "type": ["string", "number"] }
+      },
+      "required": ["title", "messages", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "users/{userId}/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/Chat" },
+      "description": "Chat sessions for a user"
+    }
+  }
+}
