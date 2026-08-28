@@ -4,31 +4,42 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>myPCB AI - AI-Powered Electronic Component Sourcing</title>
-    
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#021a10" />
+
     <!-- SEO Basics -->
     <meta name="description" content="myPCB AI is an intelligent recommendation engine helping electronic engineers and hobbyists source the perfect components for their circuits and PCBs." />
     <meta name="keywords" content="electronic components, PCB, component sourcing, AI, hardware design, engineering, datasheets" />
     <meta name="author" content="myPCB AI" />
     <meta name="robots" content="index, follow" />
-    
+
+    <!--
+      TODO (at launch, once a domain is registered):
+        1. Add <link rel="canonical" href="https://YOUR-DOMAIN/" />
+        2. Add absolute og:url / og:image and twitter:url / twitter:image tags
+           (og:image must be an absolute URL - relative paths are ignored by
+           Facebook, LinkedIn and Slack).
+        3. Add a 1200x630 PNG at public/og-image.png.
+        4. Restore the Sitemap line in public/robots.txt and fill in
+           public/sitemap.xml.
+      Absolute URLs are deliberately omitted until then: pointing canonical or
+      og:url at a domain we do not control would hand SEO signal to someone else.
+    -->
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://mypcb.ai/" />
+    <meta property="og:site_name" content="myPCB AI" />
     <meta property="og:title" content="myPCB AI - AI-Powered Electronic Component Sourcing" />
     <meta property="og:description" content="Intelligently source the perfect electronic components for your PCB designs." />
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://mypcb.ai/" />
-    <meta property="twitter:title" content="myPCB AI - AI-Powered Electronic Component Sourcing" />
-    <meta property="twitter:description" content="Intelligently source the perfect electronic components for your PCB designs." />
 
-    <!-- Canonical Tag -->
-    <link rel="canonical" href="https://mypcb.ai/" />
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="myPCB AI - AI-Powered Electronic Component Sourcing" />
+    <meta name="twitter:description" content="Intelligently source the perfect electronic components for your PCB designs." />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

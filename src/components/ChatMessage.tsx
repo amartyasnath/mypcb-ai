@@ -1,8 +1,7 @@
 import React from 'react';
-import { Bot, User } from 'lucide-react';
-import { ChatMessage as ChatMessageType, ComponentRecommendation } from '../services/gemini';
+import { ChatMessage as ChatMessageType, parseModelReply } from '../services/gemini';
 import { RecommendationCard } from './RecommendationCard';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 
 interface Props {
   message: ChatMessageType;
@@ -11,24 +10,14 @@ interface Props {
 export const ChatMessage: React.FC<Props> = ({ message }) => {
   const isModel = message.role === 'model';
 
-  // Extract recommendations from message text if they exist but aren't parsed yet
-  // This is a safety layer if we don't pre-parse before state update
-  let text = message.text;
-  let recommendations: ComponentRecommendation[] = message.recommendations || [];
-
-  if (isModel && !message.recommendations && text.includes('---RECOMMENDATIONS---')) {
-    const parts = text.split('---RECOMMENDATIONS---');
-    text = parts[0].trim();
-    const jsonPart = parts[1].split('---END---')[0].trim();
-    try {
-      recommendations = JSON.parse(jsonPart);
-    } catch (e) {
-      console.error("Failed to parse recommendations JSON", e);
-    }
-  } else if (isModel && recommendations.length > 0) {
-    // If already parsed, sanitize the text
-    text = text.split('---RECOMMENDATIONS---')[0].trim();
-  }
+  // User messages render verbatim. Model replies get re-parsed from raw text so
+  // that history loaded out of Firestore still renders cards, falling back to
+  // any recommendations that were stored alongside the message.
+  const parsed = parseModelReply(message.text);
+  const text = isModel ? parsed.text : message.text;
+  const recommendations = isModel
+    ? (message.recommendations?.length ? message.recommendations : parsed.recommendations)
+    : [];
 
   return (
     <div className={`flex w-full ${isModel ? 'flex-col space-y-4' : 'justify-end'} mb-6`}>

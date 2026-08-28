@@ -2,6 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
+// Bump this whenever the terms below change; it must not track the current date.
+const LAST_UPDATED = 'August 28, 2026';
+
 export const TermsConditions: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 overflow-y-auto">
@@ -12,7 +15,7 @@ export const TermsConditions: React.FC = () => {
         <div className="bg-white p-8 md:p-12 border border-slate-200 rounded-2xl shadow-sm">
           <h1 className="text-3xl font-bold text-slate-900 mb-6">Terms and Conditions</h1>
           <div className="prose prose-slate max-w-none prose-headings:text-slate-900 prose-a:text-blue-600">
-            <p><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
+            <p><strong>Last Updated: {LAST_UPDATED}</strong></p>
             <p>
               Please read these Terms and Conditions ("Terms") carefully before using the myPCB.ai platform.
             </p>

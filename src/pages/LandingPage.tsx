@@ -109,7 +109,7 @@ export default function LandingPage() {
                   <Cpu className="w-6 h-6" />
                 </div>
                 <CardTitle className="font-heading text-xl">Export Ready BOMs</CardTitle>
-                <CardDescription className="text-muted-foreground">Download your selected components perfectly formatted as CSVs, ready to import into your EDA tool.</CardDescription>
+                <CardDescription className="text-muted-foreground">Download your selected components as a formatted Excel (.xlsx) spreadsheet, ready to import into your EDA tool.</CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -122,15 +122,19 @@ export default function LandingPage() {
           <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-8 relative border border-border/50">
             <Shield className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-4xl font-bold font-heading mb-6 tracking-tight">Enterprise-Grade Security & Privacy</h2>
+          <h2 className="text-4xl font-bold font-heading mb-6 tracking-tight">Security & Privacy</h2>
           <p className="text-lg text-muted-foreground mb-8 font-sans leading-relaxed">
-            Your proprietary schematics and hardware designs are your intellectual property. We prioritize your confidentiality. All prompts and requirements are processed over <strong>encrypted channels</strong>, and your sensitive design data is completely safe from the public domain. Security architecture is powered by the robust foundation of Google Cloud infrastructure.
+            Your proprietary schematics and hardware designs are your intellectual property, and we treat them that way. All traffic is encrypted in transit with TLS, your chat history is private to your account, and we never sell your prompts or use them to train our own models. Our infrastructure runs on Google Cloud.
           </p>
           <div className="flex justify-center flex-wrap gap-x-12 gap-y-4">
-             <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> End-to-end TLS encryption</div>
-             <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> Private architecture</div>
-             <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> Isolated backend processing</div>
+             <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> TLS encryption in transit</div>
+             <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> History private to your account</div>
+             <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> Never used to train our models</div>
           </div>
+          <p className="text-sm text-muted-foreground mt-8">
+            Prompts are processed by the Google Gemini API to generate recommendations. See our{' '}
+            <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link> for exactly how data is handled.
+          </p>
         </div>
       </section>
 

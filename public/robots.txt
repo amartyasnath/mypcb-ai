@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mypcb.com/sitemap.xml
+# TODO: once a domain is registered, fill in public/sitemap.xml and re-add:
+# Sitemap: https://YOUR-DOMAIN/sitemap.xml
+# Left out deliberately - pointing crawlers at a sitemap for a domain we do not
+# own would be worse than having no sitemap at all.

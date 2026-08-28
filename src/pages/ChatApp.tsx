@@ -4,9 +4,9 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Cpu, Shield, Search, Zap, Info, RotateCcw, Download, Megaphone, X, Trash2 } from 'lucide-react';
+import { Cpu, Shield, Search, Zap, Info, RotateCcw, Download, Megaphone, X, Trash2, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChatMessage as ChatMessageType, chatWithMyPCB, ComponentRecommendation } from '../services/gemini';
+import { ChatMessage as ChatMessageType, chatWithMyPCB, ComponentRecommendation, parseModelReply } from '../services/gemini';
 import { ChatMessage } from '../components/ChatMessage';
 import { UserProfile } from '../components/UserProfile';
 import { exportBOM } from '../utils/exportBOM';
@@ -29,6 +29,7 @@ export default function ChatApp() {
   const [user, setUser] = useState(auth.currentUser);
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((u) => {
@@ -66,7 +67,8 @@ export default function ChatApp() {
     const chat = chats.find(c => c.id === chatId);
     if (chat) {
       setCurrentChatId(chat.id);
-      setMessages(chat.messages);
+      setMessages(Array.isArray(chat.messages) ? chat.messages : []);
+      setIsSidebarOpen(false);
     }
   };
 
@@ -120,20 +122,8 @@ export default function ChatApp() {
     try {
       const response = await chatWithMyPCB(newMessages);
       const modelText = response.text || "I'm sorry, I couldn't generate a response.";
-      
-      let recommendations: ComponentRecommendation[] = [];
-      let sanitizedText = modelText;
 
-      if (modelText.includes('---RECOMMENDATIONS---')) {
-        const parts = modelText.split('---RECOMMENDATIONS---');
-        sanitizedText = parts[0].trim();
-        const jsonPart = parts[1].split('---END---')[0].trim();
-        try {
-          recommendations = JSON.parse(jsonPart);
-        } catch (e) {
-          console.error("Failed to parse recommendations JSON from model response", e);
-        }
-      }
+      const { text: sanitizedText, recommendations } = parseModelReply(modelText);
 
       const modelMessage: ChatMessageType = {
         role: 'model',
@@ -169,6 +159,7 @@ export default function ChatApp() {
     setMessages([]);
     setInput('');
     setCurrentChatId(null);
+    setIsSidebarOpen(false);
   };
 
 
@@ -182,7 +173,10 @@ export default function ChatApp() {
     }, [] as ComponentRecommendation[]);
     
     if (allRecommendations.length > 0) {
-      exportBOM(allRecommendations);
+      exportBOM(allRecommendations).catch((err) => {
+        console.error('BOM export failed', err);
+        alert('Sorry, the BOM export failed. Please try again.');
+      });
     } else {
       alert("No components to export yet. Generate some recommendations first!");
     }
@@ -240,12 +234,34 @@ export default function ChatApp() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Desktop Only */}
-      <aside className="hidden lg:flex w-64 bg-secondary flex-col h-full shrink-0 border-r border-border">
+      {/* Backdrop for the mobile sidebar drawer */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-foreground/40 z-30 lg:hidden"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar: static on desktop, off-canvas drawer on mobile */}
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-secondary flex flex-col h-full shrink-0 border-r border-border transition-transform duration-200 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="p-6 border-b border-border">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-primary-foreground">μ</div>
-            <h1 className="text-xl font-bold text-foreground font-heading tracking-tight">myPCB<span className="text-primary">.ai</span></h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-primary-foreground">μ</div>
+              <h1 className="text-xl font-bold text-foreground font-heading tracking-tight">myPCB<span className="text-primary">.ai</span></h1>
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden p-1 text-muted-foreground hover:text-foreground"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
         
@@ -297,7 +313,7 @@ export default function ChatApp() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} initialType={showFeedbackModal === true ? 'support' : showFeedbackModal} />}
+        {showFeedbackModal && <FeedbackModal onClose={() => setShowFeedbackModal(false)} initialType={showFeedbackModal} />}
         <header className="h-14 bg-card border-b border-border hidden lg:flex items-center justify-between px-8 shrink-0">
           <div className="flex items-center space-x-4">
             <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -323,12 +339,24 @@ export default function ChatApp() {
 
         <header className="lg:hidden p-4 border-b border-border flex items-center justify-between bg-card z-10 shrink-0">
           <div className="flex items-center gap-2">
-             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground text-xs">μ</div>
-             <span className="font-bold text-foreground font-heading">myPCB.ai</span>
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 text-muted-foreground hover:text-foreground"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground text-xs">μ</div>
+            <span className="font-bold text-foreground font-heading">myPCB.ai</span>
           </div>
-          <button onClick={resetChat} className="p-2 text-muted-foreground">
-            <RotateCcw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={handleExport} className="p-2 text-muted-foreground hover:text-foreground" aria-label="Export BOM">
+              <Download className="w-4 h-4" />
+            </button>
+            <button onClick={resetChat} className="p-2 text-muted-foreground hover:text-foreground" aria-label="New scour">
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         {/* Chat Scrolling Area */}
@@ -419,7 +447,7 @@ export default function ChatApp() {
           </form>
           <p className="mt-2 text-center text-[10px] text-muted-foreground">
             myPCB AI can make mistakes. Always verify datasheets before committing to production.<br/>
-            <span className="flex items-center justify-center gap-1 mt-1 font-medium"><Shield className="w-3 h-3" /> All conversations are end-to-end encrypted for your privacy.</span>
+            <span className="flex items-center justify-center gap-1 mt-1 font-medium"><Shield className="w-3 h-3" /> Encrypted in transit (TLS). Conversations are stored to your account so you can revisit them.</span>
           </p>
         </div>
       </div>

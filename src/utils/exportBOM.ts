@@ -1,16 +1,26 @@
-import * as XLSX from 'xlsx';
 import { ComponentRecommendation } from '../services/gemini';
 
-export const exportBOM = (recommendations: ComponentRecommendation[]) => {
+/**
+ * Builds and downloads the BOM spreadsheet.
+ *
+ * `xlsx` is loaded on demand rather than imported at the top level: it is a
+ * large dependency that only matters once someone actually clicks Export, so
+ * keeping it out of the initial bundle materially speeds up first paint.
+ */
+export const exportBOM = async (recommendations: ComponentRecommendation[]) => {
   if (recommendations.length === 0) return;
 
+  const XLSX = await import('xlsx');
+
+  // Recommendations originate from model-generated JSON, so treat every field as
+  // possibly missing or of the wrong type rather than calling methods on it.
   const data = recommendations.map(rec => ({
-    'Tier': rec.tier,
-    'Component Name': rec.name,
+    'Tier': rec.tier || 'Recommended',
+    'Component Name': rec.name || 'Unnamed part',
     'Expected Price': rec.approxPrice || 'N/A',
-    'Core Specs': rec.specs,
-    'Pros': rec.pros.join(', '),
-    'Cons': rec.cons.join(', '),
+    'Core Specs': rec.specs || '',
+    'Pros': Array.isArray(rec.pros) ? rec.pros.join(', ') : '',
+    'Cons': Array.isArray(rec.cons) ? rec.cons.join(', ') : '',
     'Source URL': rec.sourceUrl || ''
   }));
 

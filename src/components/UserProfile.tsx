@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { User as AuthUser, auth as firebaseAuth, signOut } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
-import { LogOut, Settings, User as UserIcon, Palette, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User as AuthUser, signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { LogOut, User as UserIcon, ChevronUp } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 
 export const UserProfile: React.FC = () => {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(auth.currentUser);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -16,17 +17,33 @@ export const UserProfile: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleSignOut = () => {
-    signOut(auth);
+  // Close the account menu on an outside click so it cannot get stuck open.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isMenuOpen]);
+
+  const handleSignOut = async () => {
     setIsMenuOpen(false);
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Sign out failed', err);
+    }
   };
 
   if (!user) {
     return (
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-border">
         <button
           onClick={() => setIsAuthModalOpen(true)}
-          className="w-full bg-blue-600 text-white rounded p-2 text-sm font-semibold hover:bg-blue-500 transition-colors cursor-pointer"
+          className="w-full bg-primary text-primary-foreground rounded-lg p-2 text-sm font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
         >
           Sign in / Register
         </button>
@@ -35,43 +52,42 @@ export const UserProfile: React.FC = () => {
     );
   }
 
-  const nameParts = (user.displayName || '').split(' ');
-  const firstName = nameParts[0] || 'User';
-  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+  const displayName = user.displayName?.trim() || user.email?.split('@')[0] || 'Account';
 
   return (
-    <div className="p-4 border-t border-slate-800 relative">
+    <div ref={containerRef} className="p-4 border-t border-border relative">
       {isMenuOpen && (
-        <div className="absolute bottom-full left-4 right-4 mb-2 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden text-sm">
-          <button className="w-full flex items-center gap-3 p-3 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors border-b border-slate-700 text-left cursor-pointer">
-            <Palette className="w-4 h-4" /> Personalization
-          </button>
-          <button className="w-full flex items-center gap-3 p-3 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors border-b border-slate-700 text-left cursor-pointer">
-            <Settings className="w-4 h-4" /> Settings
-          </button>
-          <button className="w-full flex items-center gap-3 p-3 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors border-b border-slate-700 text-left cursor-pointer">
-            <UserIcon className="w-4 h-4" /> Profile
-          </button>
-          <button 
+        <div className="absolute bottom-full left-4 right-4 mb-2 bg-card rounded-lg shadow-xl border border-border overflow-hidden text-sm">
+          <div className="p-3 border-b border-border">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <UserIcon className="w-4 h-4 shrink-0" />
+              <span className="truncate text-xs">{user.email}</span>
+            </div>
+          </div>
+          <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 p-3 text-red-400 hover:bg-slate-700 hover:text-red-300 transition-colors text-left cursor-pointer"
+            className="w-full flex items-center gap-3 p-3 text-destructive hover:bg-secondary transition-colors text-left cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Log out
           </button>
         </div>
       )}
 
-      <button 
+      <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="w-full bg-slate-800 p-3 rounded-lg flex justify-between items-center hover:bg-slate-700 transition-colors cursor-pointer"
+        className="w-full bg-card border border-border p-3 rounded-lg flex justify-between items-center hover:bg-secondary transition-colors cursor-pointer"
       >
-        <div className="flex flex-col text-left">
-          <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">Account</span>
-          <span className="text-sm text-slate-200 font-bold truncate">
-            {firstName} {lastName}
+        <div className="flex flex-col text-left min-w-0">
+          <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-0.5">
+            Account
           </span>
+          <span className="text-sm text-foreground font-bold truncate">{displayName}</span>
         </div>
-        <ChevronUp className={`w-4 h-4 text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+        <ChevronUp
+          className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${
+            isMenuOpen ? 'rotate-180' : ''
+          }`}
+        />
       </button>
     </div>
   );

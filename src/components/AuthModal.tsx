@@ -57,11 +57,18 @@ export const AuthModal: React.FC<Props> = ({ onClose }) => {
       if (mode === 'register') {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: name });
-        await sendEmailVerification(userCredential.user);
+        // The Firestore write must happen while still signed in, since the
+        // security rules require request.auth.uid to match the document id.
         await saveUserToFirestore(userCredential.user, name);
+        await sendEmailVerification(userCredential.user);
         trackEvent('user_signup', { method: 'email', email });
-        setSuccess("Registration successful! Please check your email to verify your account.");
-        // We do not close immediately so they can read the message
+        // createUserWithEmailAndPassword signs the user in automatically. Sign
+        // them back out so an unverified account cannot use the app — the login
+        // path enforces the same rule, and leaving them in would be inconsistent.
+        await auth.signOut();
+        setSuccess("Registration successful! Check your email to verify your account, then sign in.");
+        setMode('login');
+        setPassword('');
       } else if (mode === 'login') {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         if (!userCredential.user.emailVerified) {

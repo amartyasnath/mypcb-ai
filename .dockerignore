@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.firebase
+*.log
+npm-debug.log*
+.vscode
+.idea
+.DS_Store
+README.md

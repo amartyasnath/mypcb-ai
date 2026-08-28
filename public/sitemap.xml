@@ -1,21 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PLACEHOLDER - not yet referenced from robots.txt.
+
+  Sitemaps require absolute URLs, so this cannot be filled in until a domain is
+  registered. At launch: replace YOUR-DOMAIN below, update <lastmod>, and
+  re-add the Sitemap line to public/robots.txt.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!--
   <url>
-    <loc>https://mypcb.com/</loc>
-    <lastmod>2026-05-14</lastmod>
-    <changefreq>daily</changefreq>
+    <loc>https://YOUR-DOMAIN/</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://mypcb.com/privacy</loc>
-    <lastmod>2026-05-14</lastmod>
+    <loc>https://YOUR-DOMAIN/app</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://YOUR-DOMAIN/privacy</loc>
+    <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://mypcb.com/terms</loc>
-    <lastmod>2026-05-14</lastmod>
+    <loc>https://YOUR-DOMAIN/terms</loc>
+    <lastmod>2026-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
+  -->
 </urlset>

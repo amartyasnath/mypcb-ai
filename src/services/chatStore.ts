@@ -26,7 +26,12 @@ interface FirestoreErrorInfo {
   authInfo: any;
 }
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+/**
+ * Logs the failure with enough context to debug a rules rejection. Callers that
+ * can surface a failure to the user should rethrow; callbacks (such as the
+ * onSnapshot error handler) must not, since a throw there is unhandled.
+ */
+function logFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -40,14 +45,21 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
 }
 
 export const generateId = () => {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  // Hyphens are permitted by the chatId pattern in firestore.rules.
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-export const subscribeToChats = (userId: string, callback: (chats: ChatSession[]) => void) => {
+export const subscribeToChats = (
+  userId: string,
+  callback: (chats: ChatSession[]) => void,
+  onError?: (error: unknown) => void,
+) => {
   const chatsRef = collection(db, `users/${userId}/chats`);
   const q = query(chatsRef, orderBy('updatedAt', 'desc'));
 
@@ -58,7 +70,10 @@ export const subscribeToChats = (userId: string, callback: (chats: ChatSession[]
     });
     callback(chats);
   }, (error) => {
-    handleFirestoreError(error, OperationType.LIST, `users/${userId}/chats`);
+    // Must not rethrow: this runs as a listener callback, so a throw here would
+    // surface as an unhandled exception rather than reaching any caller.
+    logFirestoreError(error, OperationType.LIST, `users/${userId}/chats`);
+    onError?.(error);
   });
 };
 
@@ -74,7 +89,7 @@ export const createChat = async (userId: string, title: string, initialMessages:
     });
     return chatId;
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, `users/${userId}/chats/${chatId}`);
+    logFirestoreError(error, OperationType.CREATE, `users/${userId}/chats/${chatId}`);
     throw error;
   }
 };
@@ -88,7 +103,7 @@ export const updateChat = async (userId: string, chatId: string, title: string, 
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `users/${userId}/chats/${chatId}`);
+    logFirestoreError(error, OperationType.UPDATE, `users/${userId}/chats/${chatId}`);
     throw error;
   }
 };
@@ -98,7 +113,7 @@ export const deleteChat = async (userId: string, chatId: string) => {
   try {
     await deleteDoc(chatRef);
   } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `users/${userId}/chats/${chatId}`);
+    logFirestoreError(error, OperationType.DELETE, `users/${userId}/chats/${chatId}`);
     throw error;
   }
 };
