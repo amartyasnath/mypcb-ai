@@ -72,12 +72,46 @@ Server-side only — see [.env.example](.env.example) for the full list.
 ## Deploying
 
 The app builds to a single Node process serving both the API and static assets,
-so any container host works.
+so any container host works. To run the production build locally:
 
 ```bash
 npm ci
 npm run build
 NODE_ENV=production PORT=8080 npm start
+```
+
+### Google Cloud Run
+
+A [Dockerfile](Dockerfile) is included (multi-stage: build with devDependencies,
+run with production dependencies only).
+
+Store the API key in Secret Manager rather than passing it as a plain env var,
+so it does not appear in the service description or deploy logs:
+
+```bash
+# One time: create the secret
+echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets create gemini-api-key --data-file=-
+
+# Grant the Cloud Run runtime service account read access
+PROJECT_NUMBER=$(gcloud projects describe "$(gcloud config get-value project)" --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Deploy
+gcloud run deploy mypcb-ai \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-secrets GEMINI_API_KEY=gemini-api-key:latest
+```
+
+Cloud Run injects `PORT`, which `server.ts` reads — do not hardcode it.
+
+To cap spend on a public endpoint, also set an instance ceiling:
+
+```bash
+gcloud run services update mypcb-ai --region us-central1 --max-instances 5
 ```
 
 ### Pre-launch checklist
