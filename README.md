@@ -1,87 +1,110 @@
 ﻿# myPCB AI
 
-The original React/Vite website with its existing green, gold and cream theme,
-backed by Express. Free sample chat uses the original recommendation cards and
-Excel BOM export. No API key is required for demo mode.
+**An electronics component-sourcing application with conversational search, part comparison, and Excel BOM export.**
+
+Built with **React 19, TypeScript, Vite, Tailwind CSS, and Express**, with optional Anthropic Claude and Firebase integrations. The responsive green, gold, and cream interface supports desktop and phone demos.
+
+> **Current status:** a working, no-key sample demo. Searches choose predefined category examples; they do not perform live sourcing or validate electrical compatibility. The live AI integration exists but has not been verified with paid API calls. A permanent live demo is not deployed yet.
+
+## What you can try
+
+1. Open the workspace and describe a component requirement, such as **Low-power LDO for 5V to 3.3V conversion**.
+2. Review sample cards for LDOs, MOSFETs, microcontrollers, or op-amps. Unsupported categories show a labeled fallback.
+3. Select **Compare** on candidate parts to build a side-by-side shortlist.
+4. Download all recommendations or only the selected parts as an **Excel BOM**.
+5. Open **Manufacturer?** to explore partnerships and download an inquiry brief.
+
+The demo uses no paid model or search calls. Prices, stock, lifecycle, footprint, and suitability remain unverified. Comparison choices last for the current view; downloading a partnership brief sends no inquiry.
+
+## How it works
+
+```mermaid
+flowchart LR
+    UI[React and TypeScript interface] --> API[Express API]
+    API --> Demo[Default: category-based sample catalog]
+    API -. Optional live mode .-> Claude[Anthropic Claude and web search]
+    UI --> BOM[Part comparison and Excel export]
+    UI -. Optional accounts .-> Firebase[Firebase Auth and Firestore]
+    API -. Optional contact delivery .-> Discord[Discord webhook]
+```
+
+The backend validates chat payloads and limits requests. Provider responses are parsed into prose and recommendation cards; the UI tolerates malformed recommendation data and filters unsafe supplier links. Model credentials stay on the server. Demo mode is enabled unless explicitly disabled, even if an API key is present.
+
+There is **no custom-trained ML model or RandomForestRegressor**. The sample catalog uses keyword matching; optional live recommendations use a hosted large language model.
+
+## Implemented and optional capabilities
+
+| Capability | Status |
+| --- | --- |
+| Category-based sample chat | Implemented; no key required |
+| Responsive UI and phone manufacturer access | Implemented |
+| Comparison shortlist and Excel exports | Implemented |
+| Manufacturer partnership brief | Implemented; local download |
+| Anthropic recommendations and search | Integration present; paid behavior unverified |
+| Firebase sign-in and saved conversations | Integration present; deployment/sign-in unverified |
+| Contact delivery | Requires a configured Discord webhook; failures shown honestly |
+| Permanent public demo | Not deployed |
 
 ## Run locally
 
-Requires Node.js 20 or newer. From this folder in PowerShell:
+Requires **Node.js 20 or newer**. From the repository root:
 
-```powershell
-npm.cmd ci
-npm.cmd run dev
+```bash
+npm ci
+npm run dev
 ```
 
-Open http://localhost:3000. Use `npm.cmd` on Windows if PowerShell blocks `npm`.
-No Python or Streamlit server is needed. Start from the landing page and open
-the component sourcing chat. Guest chat does not require signing in.
+Open **http://localhost:3000** and choose **Launch Workspace**. On Windows, use `npm.cmd` if PowerShell blocks `npm`. Guest sample chat requires no account, Python, or API key.
 
-`DEMO_MODE` defaults to `true`, even if an API key is present. The original chat
-shows a sample-mode notice and returns fixed illustrative cards. Sample parts
-are not matched to requirements; pricing, stock and suitability are unverified.
-Use the existing Export BOM button to download recommendations as Excel.
+## Production build
 
-## Build and run production
+```bash
+npm run lint
+npm run build
+```
+
+Then set `NODE_ENV=production` and run `npm start`. On PowerShell:
 
 ```powershell
-npm.cmd run lint
-npm.cmd run build
 $env:NODE_ENV = 'production'
 npm.cmd start
 ```
 
-`npm run preview` serves only the frontend and does not provide the chat API.
-The included Dockerfile builds and runs the complete Node app. Deploy it to a
-Node/container host using `npm ci && npm run build` as the build command and
-`npm start` as the start command, with `NODE_ENV=production` and `DEMO_MODE=true`.
-The server uses the host's `PORT` variable. Streamlit Community Cloud is not the
-hosting target for this React/Express website.
+The included Dockerfile runs the frontend and API together. For a Node/container host, use `npm ci && npm run build` as the build command, `npm start` as the start command, and set `NODE_ENV=production` and `DEMO_MODE=true`. The server reads the host's `PORT` variable.
 
-## Optional services
+`npm run preview` serves only the frontend, not the chat API. This React/Express project is not a Streamlit application.
+
+## Configuration
 
 Copy `.env.example` to `.env` without overwriting an existing file.
 
-- Live AI: set `DEMO_MODE=false`, `ANTHROPIC_API_KEY`, and a `CLAUDE_MODEL` supported
-  by your Anthropic account, then restart. Without a key, live mode returns
-  **API key required**. Live API/model compatibility was not tested. API usage
-  and web search incur separate charges; a Claude subscription is not API access.
-- `MAX_WEB_SEARCHES` caps searches per reply (default 6). Before enabling paid AI
-  publicly, add authenticated usage quotas and provider budget controls.
-- Firebase auth/history: configure your own `firebase-applet-config.json`, auth
-  providers, authorized domains and Firestore rules before relying on sign-in.
-- Contact delivery: configure `DISCORD_WEBHOOK_URL`. The existing contact form
-  reports an error if delivery is unconfigured or fails.
+| Variable | Purpose |
+| --- | --- |
+| `DEMO_MODE` | Defaults to `true`; set `false` only for live AI |
+| `ANTHROPIC_API_KEY` | Server-side key for optional paid AI |
+| `CLAUDE_MODEL` | Model supported by your Anthropic account; verify compatibility before live use |
+| `MAX_WEB_SEARCHES` | Search cap per reply; default 6 |
+| `PORT` | Server port; default 3000 |
+| `DISCORD_WEBHOOK_URL` | Optional contact delivery |
 
-Keys stay server-side. Never put them in `VITE_` variables or commit `.env`.
-`/api/health` reports `demoMode` and key configuration. `/api/chat` has an
-in-process limit of 12 requests per minute per IP.
+Restart after changing configuration. Live mode without a key returns **API key required**. A Claude subscription is separate from API billing. Add authenticated quotas and provider budget controls before exposing paid AI publicly; the current 12-request/minute/IP limit is per process.
 
-## Next features for the existing website
+For accounts, configure your own `firebase-applet-config.json`, Firebase auth providers, authorized domains, and Firestore rules. Firebase client identifiers are public by design, but deployed rules and API restrictions must protect resources. These cloud settings have not been verified from this workspace.
 
-1. Manufacturer sponsorship inquiries with labeled paid placements and lead reports.
-2. Structured requirements filters for voltage, interfaces, footprint and budget.
-3. Side-by-side comparisons with datasheet evidence and compatibility gaps.
-4. Distributor stock/price comparisons with timestamps and alerts.
-5. Saved project BOMs with quantities, revisions and shareable review links.
+Never commit `.env`, provider credentials, service-account keys, or webhook URLs. Never place server secrets in `VITE_` variables. Local tools, build output, agent settings, and virtual environments are excluded from Git and container uploads.
 
-## Validation
+## Validation and limitations
 
-Typechecking and production build pass; the build has a nonblocking bundle-size
-warning. Local HTTP checks passed for sample chat, health, unconfigured contact
-and live mode without a key. Browser visual review, Firebase sign-in and paid AI
-were not tested. The original theme, fonts, landing page and layout are preserved.
+Typechecking and production builds pass, with a nonblocking bundle-size warning. Local and public HTTPS checks exercised sample searches, health, missing-key behavior, and unconfigured contact errors. Browser visual review, Firebase sign-in, paid AI, and end-to-end download interactions have not been verified.
 
-## Demo additions and phone link
+`/api/health` reports demo and key-configuration status. A temporary Cloudflare tunnel can expose a local production server for phone testing, but requires the computer and tunnel to stay running. It is not a permanent resume link.
 
-Sample searches now select LDO, MOSFET, microcontroller or op-amp example cards.
-Unrecognized categories show a labeled fallback; electrical requirements are not
-validated. Select Compare checkboxes to build a comparison table and use Export
-selected BOM. The manufacturer dialog includes a downloadable partnership brief;
-it does not submit an inquiry. Original theme and layout remain in place.
+## Next steps
 
-For a temporary public phone demo, run the production app with DEMO_MODE=true,
-then `.\.tools\cloudflared.exe tunnel --url http://127.0.0.1:3000 --no-autoupdate`.
-Use the HTTPS address printed by cloudflared. Keep the computer awake and both
-processes running; the link expires when the tunnel stops. This is not permanent
-hosting. The current shared demo uses port 3010 with AI/webhook credentials cleared.
+- Requirements filters and datasheet-backed electrical compatibility checks.
+- Distributor price/stock feeds with timestamps and alerts.
+- BOM quantities, project revisions, and shareable review links.
+- Clearly labeled manufacturer sponsorships and lead reporting, independent of technical rankings.
+- Permanent demo hosting and authenticated live-AI quotas.
+
+For recruiters, use **https://github.com/amartyasnath/mypcb-ai** once the repository is public. Add a stable hosted demo URL later. See [release notes](docs/PUBLIC_RELEASE.md) for the remaining visibility and account settings.

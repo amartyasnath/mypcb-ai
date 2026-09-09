@@ -13,3 +13,11 @@ npm-debug.log*
 .idea
 .DS_Store
 README.md
+.tools
+.venv
+.claude
+.codex
+.agents
+.streamlit
+__pycache__
+graphify-out
