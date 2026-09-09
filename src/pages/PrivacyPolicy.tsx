@@ -49,8 +49,12 @@ export const PrivacyPolicy: React.FC = () => {
                 plain text in order to generate recommendations.
               </li>
               <li>
-                To answer your question, the content of your prompt is sent to the Google Gemini API. Its
-                handling is additionally governed by Google's terms and privacy policy.
+                To answer your question, the content of your prompt is sent to the Anthropic Claude API.
+                Its handling is additionally governed by Anthropic's terms and privacy policy.
+              </li>
+              <li>
+                To find current parts, pricing and availability, Claude may run web searches derived from
+                your request. Search queries are processed by Anthropic's search provider.
               </li>
               <li>
                 If you are signed in, your conversation history is stored in Google Firestore, associated
@@ -68,7 +72,7 @@ export const PrivacyPolicy: React.FC = () => {
 
             <h3>4. Third Parties We Share Data With</h3>
             <ul>
-              <li><strong>Google (Gemini API)</strong> — receives your prompt text to generate responses.</li>
+              <li><strong>Anthropic (Claude API)</strong> — receives your prompt text to generate responses, and runs web searches on your behalf to find current part data.</li>
               <li><strong>Google Firebase / Firestore</strong> — authentication and storage of your account and chat history.</li>
               <li><strong>Google Analytics for Firebase</strong> — anonymous usage and page-view analytics.</li>
               <li><strong>Discord</strong> — if you submit feedback or a support request, the message and your email are forwarded to our internal Discord channel so we can respond.</li>

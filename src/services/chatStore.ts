@@ -1,6 +1,6 @@
 import { db, auth } from '../lib/firebase';
 import { collection, doc, setDoc, updateDoc, onSnapshot, query, orderBy, deleteDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { ChatMessage } from './gemini';
+import { ChatMessage } from './chat';
 
 export interface ChatSession {
   id: string;

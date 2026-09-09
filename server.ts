@@ -2,8 +2,11 @@ import "dotenv/config";
 
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
+import { demoReply } from "./lib/demoReply";
+
+// Explicit opt-in prevents accidental API spend, even if a key exists in .env.
+const DEMO_MODE = process.env.DEMO_MODE !== "false";
 
 const SYSTEM_INSTRUCTION = `You are myPCB, an AI agent specialized in electronic component recommendations.
 Your goal is to help users find the best possible electronic components (ICs, passives, connectors, etc.) based on their project requirements.
@@ -22,7 +25,9 @@ GUIDELINES:
    - 'Budget-Friendly': For cost-sensitive projects.
    - 'Premium': High-performance or high-reliability options (Optional).
    - 'Savings': Extreme low-cost alternatives (Optional).
-3. Use Google Search to find real, currently available parts and pricing.
+3. Use the web_search tool to find real, currently available parts and pricing.
+   Search before recommending: part availability, lifecycle status and pricing
+   change constantly, so do not rely on memory for stock or price claims.
 4. Provide structured data when recommending parts. Always include specific part numbers (e.g., "STM32F405RGT6" instead of just "STM32").
 5. Format your output as a conversational response, but use a specific JSON-like structure (or clear delimiters) if you want the UI to render cards for the components.
 
@@ -46,10 +51,18 @@ Every object MUST include "name", "tier", "specs", "pros" and "cons". Use an emp
 "pros"/"cons" if you have nothing to list, never omit the field.`;
 
 // Model is configurable so it can be rolled forward without a code change.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 
-// Request limits. These protect the API budget: the Gemini key is ours, so an
-// unauthenticated caller hammering /api/gemini spends our money.
+// Cap on web searches per reply. Each search is billed on top of tokens, so
+// this is the main lever on per-request cost.
+const MAX_WEB_SEARCHES = Number(process.env.MAX_WEB_SEARCHES) || 6;
+
+// Server tools can end a turn with stop_reason "pause_turn" on long-running
+// work. We resume the same turn rather than returning a partial answer.
+const MAX_TURN_CONTINUATIONS = 4;
+
+// Request limits. These protect the API budget: the Anthropic key is ours, so
+// an unauthenticated caller hammering /api/chat spends our money.
 const MAX_MESSAGES = 60;
 const MAX_TEXT_LENGTH = 8000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -122,6 +135,79 @@ function parseMessages(body: unknown): { messages: ClientMessage[] } | { error: 
   return { messages };
 }
 
+/**
+ * Concatenates the assistant's visible prose.
+ *
+ * A reply that used web search contains several block types - `thinking`,
+ * `server_tool_use`, `web_search_tool_result` - alongside the `text` blocks.
+ * Only `text` is meant for the user.
+ */
+function extractText(content: Anthropic.Beta.BetaContentBlock[]): string {
+  return content
+    .filter((block): block is Anthropic.Beta.BetaTextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("")
+    .trim();
+}
+
+/**
+ * Runs one conversational turn against Claude, with web search enabled.
+ *
+ * Streaming is used purely to avoid HTTP timeouts on slow turns (search plus
+ * extended thinking can run a while); the full reply is still returned as a
+ * single string, so the client contract is unchanged.
+ */
+async function generateReply(
+  client: Anthropic,
+  messages: ClientMessage[],
+): Promise<string> {
+  // The client and Firestore both store the assistant role as "model" (a
+  // holdover from the Gemini schema). Mapping here rather than renaming the
+  // stored field keeps every existing saved chat readable.
+  const conversation: Anthropic.Beta.BetaMessageParam[] = messages.map((m) => ({
+    role: m.role === "model" ? ("assistant" as const) : ("user" as const),
+    content: m.text,
+  }));
+
+  for (let attempt = 0; attempt < MAX_TURN_CONTINUATIONS; attempt++) {
+    const response = await client.beta.messages
+      .stream({
+        model: CLAUDE_MODEL,
+        max_tokens: 16000,
+        system: SYSTEM_INSTRUCTION,
+        messages: conversation,
+        thinking: { type: "adaptive" },
+        tools: [
+          {
+            type: "web_search_20260209",
+            name: "web_search",
+            max_uses: MAX_WEB_SEARCHES,
+          },
+        ],
+        // If a safety classifier declines the request, retry it on a fallback
+        // model inside the same call instead of failing the user's search.
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+      })
+      .finalMessage();
+
+    if (response.stop_reason === "refusal") {
+      console.warn("Claude refused request:", response.stop_details);
+      return "I wasn't able to answer that one. Try rephrasing it as a component sourcing question.";
+    }
+
+    // The turn was suspended mid-work; hand its output back and let it resume.
+    if (response.stop_reason === "pause_turn") {
+      conversation.push({ role: "assistant", content: response.content });
+      continue;
+    }
+
+    return extractText(response.content);
+  }
+
+  return "That search took too many steps to complete. Please narrow the requirements and try again.";
+}
+
 async function postWebhook(payload: unknown): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
@@ -133,10 +219,11 @@ async function postWebhook(payload: unknown): Promise<void> {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      console.error(`Webhook returned ${res.status} ${res.statusText}`);
+      throw new Error(`Webhook returned ${res.status}`);
     }
   } catch (err) {
     console.error("Webhook POST failed:", err);
+    throw err;
   }
 }
 
@@ -151,25 +238,26 @@ async function startServer() {
 
   app.use(express.json({ limit: "256kb" }));
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!DEMO_MODE && !process.env.ANTHROPIC_API_KEY) {
     console.warn(
-      "WARNING: GEMINI_API_KEY is not set. /api/gemini will return 503 until it is configured.",
+      "WARNING: ANTHROPIC_API_KEY is not set. /api/chat will return 503 until it is configured.",
     );
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
 
   app.get("/api/health", (_req, res) => {
     res.status(200).json({
       status: "ok",
-      model: GEMINI_MODEL,
-      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+      model: CLAUDE_MODEL,
+      anthropicConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+      demoMode: DEMO_MODE,
     });
   });
 
-  app.post("/api/gemini", async (req, res) => {
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(503).json({ error: "The AI service is not configured. Please try again later." });
+  app.post("/api/chat", async (req, res) => {
+    if (!DEMO_MODE && !process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: "API key required: configure ANTHROPIC_API_KEY, or enable DEMO_MODE=true for free samples." });
     }
 
     const ip = req.ip || "unknown";
@@ -184,22 +272,13 @@ async function startServer() {
       return res.status(400).json({ error: parsed.error });
     }
 
+    if (DEMO_MODE) {
+      return res.json({ text: demoReply(parsed.messages) });
+    }
+
     try {
-      const contents = parsed.messages.map((m) => ({
-        role: m.role,
-        parts: [{ text: m.text }],
-      }));
+      const text = await generateReply(anthropic, parsed.messages);
 
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ googleSearch: {} }],
-        },
-      });
-
-      const text = response.text;
       if (!text) {
         return res
           .status(502)
@@ -209,7 +288,18 @@ async function startServer() {
       res.status(200).json({ text });
     } catch (error) {
       // Log the real error, but never forward provider internals to the client.
-      console.error("Gemini API Error:", error);
+      console.error("Anthropic API Error:", error);
+
+      if (error instanceof Anthropic.RateLimitError) {
+        return res
+          .status(429)
+          .json({ error: "The AI service is busy right now. Please try again in a moment." });
+      }
+      if (error instanceof Anthropic.AuthenticationError) {
+        // A bad key is our misconfiguration, not the caller's problem.
+        return res.status(503).json({ error: "The AI service is not configured correctly." });
+      }
+
       res.status(502).json({ error: "Failed to reach the AI service. Please try again shortly." });
     }
   });
@@ -231,7 +321,7 @@ async function startServer() {
           null,
           2,
         ).slice(0, 1500)}\n\`\`\``,
-      });
+      }).catch(() => {});
     }
 
     res.status(200).json({ status: "logged" });
@@ -249,14 +339,21 @@ async function startServer() {
     }
 
     const safeType = type === "bug" || type === "manufacturer" ? type : "support";
+    if (!process.env.DISCORD_WEBHOOK_URL) {
+      return res.status(503).json({ error: "Contact delivery is not configured yet. No message was sent." });
+    }
     console.log(`[Feedback] Received ${safeType} from ${email}`);
 
-    await postWebhook({
+    try {
+      await postWebhook({
       content: `📬 **New Feedback/Support Request**\n**Type:** ${safeType}\n**From:** ${email.slice(
         0,
         256,
       )}\n**Message:**\n>>> ${message.slice(0, 1500)}`,
-    });
+      });
+    } catch {
+      return res.status(502).json({ error: "Message delivery failed. Please try again later." });
+    }
 
     res.status(200).json({ status: "success" });
   });
@@ -279,6 +376,7 @@ async function startServer() {
   });
 
   if (!isProduction) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -294,7 +392,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT} (model: ${GEMINI_MODEL})`);
+    console.log(`Server running on http://0.0.0.0:${PORT} (model: ${CLAUDE_MODEL})`);
   });
 }
 

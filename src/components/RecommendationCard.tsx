@@ -1,7 +1,7 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ComponentRecommendation } from '../services/gemini';
+import { ComponentRecommendation } from '../services/chat';
 
 interface Props {
   recommendation: ComponentRecommendation;

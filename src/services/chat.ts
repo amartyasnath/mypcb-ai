@@ -52,7 +52,7 @@ export const parseModelReply = (
 };
 
 export const chatWithMyPCB = async (messages: ChatMessage[]): Promise<{ text: string }> => {
-  const response = await fetch('/api/gemini', {
+  const response = await fetch('/api/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

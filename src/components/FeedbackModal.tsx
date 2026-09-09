@@ -17,18 +17,24 @@ export const FeedbackModal: React.FC<Props> = ({ onClose, initialType = 'support
   const [email, setEmail] = useState(auth.currentUser?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !email.trim()) return;
 
     setIsSubmitting(true);
+    setError('');
     try {
-      await fetch('/api/feedback', {
+      const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, message, email }),
       });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Message delivery failed. Please try again.');
+      }
       
       trackEvent('feedback_submitted', { type });
       setSuccess(true);
@@ -36,6 +42,7 @@ export const FeedbackModal: React.FC<Props> = ({ onClose, initialType = 'support
         onClose();
       }, 2000);
     } catch (err) {
+      setError(err instanceof Error ? err.message : 'Message delivery failed.');
       console.error('Failed to submit feedback', err);
     } finally {
       setIsSubmitting(false);
@@ -77,6 +84,7 @@ export const FeedbackModal: React.FC<Props> = ({ onClose, initialType = 'support
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
+                {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">How can we help?</label>
                   <div className="grid grid-cols-3 gap-3">

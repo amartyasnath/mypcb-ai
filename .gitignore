@@ -8,3 +8,7 @@ out/
 .env.*
 !.env.example
 functions/.secret.local
+.tools/
+.venv/
+__pycache__/
+.streamlit/secrets.toml

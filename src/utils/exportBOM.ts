@@ -1,4 +1,4 @@
-import { ComponentRecommendation } from '../services/gemini';
+import { ComponentRecommendation } from '../services/chat';
 
 /**
  * Builds and downloads the BOM spreadsheet.

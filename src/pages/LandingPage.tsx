@@ -132,7 +132,7 @@ export default function LandingPage() {
              <div className="flex items-center gap-2 text-sm font-medium text-foreground"><div className="w-1.5 h-1.5 rounded-full bg-primary" /> Never used to train our models</div>
           </div>
           <p className="text-sm text-muted-foreground mt-8">
-            Prompts are processed by the Google Gemini API to generate recommendations. See our{' '}
+            Prompts are processed by the Anthropic Claude API to generate recommendations. See our{' '}
             <Link to="/privacy" className="underline hover:text-foreground">Privacy Policy</Link> for exactly how data is handled.
           </p>
         </div>

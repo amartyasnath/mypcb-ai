@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Cpu, Shield, Search, Zap, Info, RotateCcw, Download, Megaphone, X, Trash2, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChatMessage as ChatMessageType, chatWithMyPCB, ComponentRecommendation, parseModelReply } from '../services/gemini';
+import { ChatMessage as ChatMessageType, chatWithMyPCB, ComponentRecommendation, parseModelReply } from '../services/chat';
 import { ChatMessage } from '../components/ChatMessage';
 import { UserProfile } from '../components/UserProfile';
 import { exportBOM } from '../utils/exportBOM';
@@ -20,6 +20,7 @@ export default function ChatApp() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   const [lastRequestTime, setLastRequestTime] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +31,10 @@ export default function ChatApp() {
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/health').then(r => r.json()).then(data => setDemoMode(data.demoMode === true)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((u) => {
@@ -183,7 +188,7 @@ export default function ChatApp() {
   };
 
   return (
-    <div className="flex h-screen bg-background font-sans text-foreground overflow-hidden">
+    <div className="flex h-dvh bg-background font-sans text-foreground overflow-hidden">
       <AnimatePresence>
         {showManufacturerAd && (
           <motion.div 
@@ -196,7 +201,7 @@ export default function ChatApp() {
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 10 }}
-              className="bg-card rounded-2xl w-full max-w-lg overflow-hidden border border-border shadow-2xl"
+              className="bg-card rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto border border-border shadow-2xl"
             >
               <div className="p-6 bg-primary text-primary-foreground flex justify-between items-start">
                 <div>
@@ -213,7 +218,7 @@ export default function ChatApp() {
                     Are you a component manufacturer? Getting your parts in front of design engineers at the exact moment they are making architectural decisions is critical.
                   </p>
                   <p>
-                    <strong>myPCB AI</strong> parses thousands of data points to recommend parts. By partnering with us, you can ensure we have direct access to your latest datasheets, lifecycle statuses, and inventory metrics, significantly increasing the chances of your components being highlighted as "Recommended" or "Premium" tier options.
+                    Share your datasheets, lifecycle information and inventory feeds with myPCB AI. Sponsored placements will be clearly labeled; engineering recommendations should be based on technical fit.
                   </p>
                   <p>
                     Get in touch today to optimize your datasheet parsing and feature your specialized components in our recommendation engine!
@@ -228,6 +233,7 @@ export default function ChatApp() {
                 >
                   Contact Author / Partner
                 </button>
+                <a href="/manufacturer-partnership.txt" download className="block text-center border border-primary text-primary rounded-xl py-3 mt-3 font-semibold">Download partnership brief</a>
               </div>
             </motion.div>
           </motion.div>
@@ -252,7 +258,7 @@ export default function ChatApp() {
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-primary-foreground">μ</div>
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-primary-foreground">&#956;</div>
               <h1 className="text-xl font-bold text-foreground font-heading tracking-tight">myPCB<span className="text-primary">.ai</span></h1>
             </div>
             <button
@@ -337,7 +343,7 @@ export default function ChatApp() {
           </div>
         </header>
 
-        <header className="lg:hidden p-4 border-b border-border flex items-center justify-between bg-card z-10 shrink-0">
+        <header className="lg:hidden p-4 border-b border-border flex flex-wrap gap-y-2 items-center justify-between bg-card z-10 shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -346,7 +352,7 @@ export default function ChatApp() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground text-xs">μ</div>
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground text-xs">&#956;</div>
             <span className="font-bold text-foreground font-heading">myPCB.ai</span>
           </div>
           <div className="flex items-center gap-1">
@@ -357,9 +363,17 @@ export default function ChatApp() {
               <RotateCcw className="w-4 h-4" />
             </button>
           </div>
+          <button
+            onClick={() => setShowManufacturerAd(true)}
+            className="w-full min-h-11 px-3 py-2 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-md hover:bg-primary/20 flex items-center justify-center gap-2"
+          >
+            <Megaphone className="w-4 h-4" aria-hidden="true" />
+            Manufacturer?
+          </button>
         </header>
 
         {/* Chat Scrolling Area */}
+        {demoMode && <div role="status" className="px-6 py-2 text-sm bg-muted">Sample demo: fixed examples, no AI calls or live prices. No sign-in required.</div>}
         <div 
           ref={scrollRef}
           className="flex-1 overflow-y-auto scroll-smooth p-6 pb-0"
@@ -417,7 +431,7 @@ export default function ChatApp() {
         </div>
 
         {/* Input Area */}
-        <div className="h-24 bg-card border-t border-border p-4 shrink-0 flex flex-col justify-center">
+        <div className="bg-card border-t border-border p-3 sm:p-4 shrink-0 flex flex-col justify-center">
           <form 
             onSubmit={handleSubmit}
             className="max-w-4xl mx-auto w-full flex items-center space-x-2 bg-background rounded-lg border border-border p-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all"
@@ -427,7 +441,7 @@ export default function ChatApp() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Refine search, e.g. 'Must have I2C interface' or 'Find AEC-Q100 qualified'"
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-2 text-foreground outline-none"
+              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-base sm:text-sm px-2 text-foreground outline-none"
               disabled={isLoading}
             />
             {isLoading ? (

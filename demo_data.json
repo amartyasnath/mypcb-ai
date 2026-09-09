@@ -1,0 +1,9 @@
+{
+  "notice": "Sample demo only — no AI call or live search. These fixed examples are not matched to your requirements; price, stock and suitability are not verified.",
+  "reply": "Here is an illustrative microcontroller shortlist to demonstrate the recommendation and BOM export flow. For a real search, specify voltage, current, interfaces, temperature, footprint, quantity and budget. Live recommendations require an API key in the Node app.",
+  "recommendations": [
+    {"name": "STM32F405RGT6", "tier": "Recommended", "specs": "Illustrative microcontroller candidate; verify the manufacturer datasheet.", "pros": ["Example primary candidate"], "cons": ["Compatibility not evaluated"], "approxPrice": "Not checked", "sourceUrl": "https://www.st.com/en/microcontrollers-microprocessors/stm32f405rg.html"},
+    {"name": "RP2040", "tier": "Good Alternative", "specs": "Illustrative microcontroller candidate; verify the manufacturer datasheet.", "pros": ["Example alternative candidate"], "cons": ["Not a drop-in replacement"], "approxPrice": "Not checked", "sourceUrl": "https://www.raspberrypi.com/products/rp2040/"},
+    {"name": "ATMEGA328P-PU", "tier": "Budget-Friendly", "specs": "Illustrative microcontroller candidate; tier is a UI example, not a price claim.", "pros": ["Example budget tier"], "cons": ["Price and lifecycle not checked"], "approxPrice": "Not checked", "sourceUrl": "https://www.microchip.com/en-us/product/ATmega328P"}
+  ]
+}
